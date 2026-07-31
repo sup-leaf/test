@@ -1,6 +1,6 @@
 /*
  * Jenkins 声明式流水线
- * 触发方式: Gerrit Patch Set Created
+ * Jenkins 流水线 — 通过 Gerrit Trigger + PATCHSET_REVISION 检出
  * 阶段: Checkout → 编译 → 单元测试 → 集成测试 → 打包 → 报告
  */
 
@@ -8,9 +8,7 @@ pipeline {
     agent any
 
     environment {
-        // 激活 test profile，使用 H2 内存数据库运行测试
         SPRING_PROFILES_ACTIVE = 'test'
-        // Maven 本地仓库缓存（可选，提升构建速度）
         MAVEN_OPTS = '-Xmx1024m'
     }
 
@@ -25,7 +23,6 @@ pipeline {
         stage('编译') {
             steps {
                 echo '========== Maven 编译 =========='
-                // 编译但不运行测试
                 sh 'mvn clean compile -DskipTests'
             }
         }
@@ -33,12 +30,10 @@ pipeline {
         stage('单元测试') {
             steps {
                 echo '========== 运行单元测试 =========='
-                // 运行所有测试，测试失败则流水线终止
                 sh 'mvn test'
             }
             post {
                 always {
-                    // 收集单元测试报告
                     junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
                 }
             }
@@ -47,12 +42,10 @@ pipeline {
         stage('集成测试') {
             steps {
                 echo '========== 运行集成测试（H2 内存数据库）=========='
-                // verify 阶段会运行集成测试并验证
                 sh 'mvn verify -P test'
             }
             post {
                 always {
-                    // 收集集成测试报告
                     junit testResults: 'target/failsafe-reports/*.xml', allowEmptyResults: true
                 }
             }
@@ -69,21 +62,15 @@ pipeline {
     post {
         success {
             echo '========== 流水线执行成功 =========='
-            // 归档构建产物
             archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            // （可选）将构建结果通知 Gerrit
-            // updateGerritReview: status: 'SUCCESS', ...
         }
         failure {
             echo '========== 流水线执行失败 =========='
-            // （可选）将构建失败通知 Gerrit
-            // updateGerritReview: status: 'FAILED', ...
         }
         unstable {
             echo '========== 流水线结果不稳定（测试有失败）=========='
         }
         always {
-            // 清理工作空间（可选）
             cleanWs()
         }
     }

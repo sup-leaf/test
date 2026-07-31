@@ -72,4 +72,28 @@ public class FileController {
             return Result.error("文件上传失败");
         }
     }
+
+    @ApiOperation("删除已上传的文件")
+    @DeleteMapping("/delete")
+    public Result<String> deleteFile(@RequestParam String fileUrl) {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            return Result.error("文件路径不能为空");
+        }
+        // 本地文件删除
+        if (!fileUrl.startsWith("http")) {
+            String relativePath = fileUrl.startsWith("/uploads/") ? fileUrl.substring("/uploads/".length()) : fileUrl;
+            File file = new File(uploadPath, relativePath);
+            if (file.exists()) {
+                file.delete();
+                return Result.success("文件已删除");
+            }
+            return Result.error("文件不存在");
+        }
+        // COS 文件删除
+        if (cosUtil.isEnabled()) {
+            cosUtil.delete(fileUrl);
+            return Result.success("文件已删除");
+        }
+        return Result.error("不支持的文件类型");
+    }
 }

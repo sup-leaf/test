@@ -16,7 +16,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/campus_market?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
-    password: 996903
+    password: your_mysql_password
   redis:
     host: localhost
     port: 6379
@@ -24,9 +24,9 @@ spring:
     timeout: 2s
 
 ai:
-  dashscope:
-    api-key: sk-98037d490f7748c187134a149084a2f0
-    model: qwen-plus
+  deepseek:
+    api-key: your_deepseek_api_key
+    model: deepseek-reasoner
 
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml

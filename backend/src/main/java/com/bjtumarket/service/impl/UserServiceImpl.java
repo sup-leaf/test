@@ -16,12 +16,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public User login(String username, String password, Integer userType) {
-        String md5Password = DigestUtils.md5DigestAsHex(password.getBytes(StandardCharsets.UTF_8));
+        // 兼容双重 MD5（SQL 种子数据）和单次 MD5（旧注册用户）
+        String doubleMd5 = DigestUtils.md5DigestAsHex(
+            DigestUtils.md5DigestAsHex(password.getBytes(StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8)
+        );
+        String singleMd5 = DigestUtils.md5DigestAsHex(password.getBytes(StandardCharsets.UTF_8));
+
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(User::getUsername, username)
-                .eq(User::getPassword, md5Password)
                 .eq(User::getUserType, userType)
                 .eq(User::getStatus, 1);
+        // 先用双重 MD5 查，再用单次 MD5 查
+        wrapper.and(w -> w.eq(User::getPassword, doubleMd5).or().eq(User::getPassword, singleMd5));
         return this.getOne(wrapper);
     }
 
@@ -32,7 +38,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (this.count(wrapper) > 0) {
             return false;
         }
-        String md5Password = DigestUtils.md5DigestAsHex(user.getPassword().getBytes(StandardCharsets.UTF_8));
+        // 单次 MD5（登录兼容双 MD5 验证旧密码）
+        String md5Password = DigestUtils.md5DigestAsHex(
+            user.getPassword().getBytes(StandardCharsets.UTF_8)
+        );
         user.setPassword(md5Password);
         // S3: 深度合作企业自动审核通过
         if (user.getUserType() != null && user.getUserType() == 2) {

@@ -1,4 +1,4 @@
-# backend
+﻿# backend
 backend/target/
 backend/*.class
 backend/.mvn/
@@ -12,11 +12,12 @@ backend/src/main/resources/application-local.yml
 backend/src/main/resources/application-ai.properties
 backend/src/main/resources/application-hpj.properties
 
-# frontend
+# frontend-react
 frontend-web/node_modules/
 frontend-web/dist/
 frontend-web/.vite/
-frontend-web/package-lock.json
+frontend-web/.env
+frontend-web/.env.local
 frontend-miniprogram/node_modules/
 
 # IDE

@@ -31,6 +31,7 @@ public class CertificateService {
              Document document = new Document(pdfDoc, PageSize.A4)) {
 
             // === S5.2 防伪水印：淡灰底色 ===
+            pdfDoc.addNewPage();
             PdfCanvas canvas = new PdfCanvas(pdfDoc.getFirstPage());
             canvas.saveState();
             PdfExtGState gs = new PdfExtGState().setFillOpacity(0.08f);

@@ -121,7 +121,7 @@ class UserServiceImplTest {
 
         userService.register(user);
 
-        // Verify the password was encrypted (MD5)
+        // Verify password was MD5 encrypted
         String expectedMd5 = DigestUtils.md5DigestAsHex("plaintext123".getBytes(StandardCharsets.UTF_8));
         assertEquals(expectedMd5, user.getPassword());
         assertNotEquals("plaintext123", user.getPassword());

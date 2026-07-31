@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,7 +22,7 @@ public class CompetitionTeam {
     private Integer currentMembers;
     private Long leaderId;
     private Integer status; // 1-招募中 2-已满员/已结束
-    private LocalDateTime deadline;
+    private LocalDate deadline;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

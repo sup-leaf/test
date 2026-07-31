@@ -6,7 +6,9 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bjtumarket.entity.Delivery;
 import com.bjtumarket.entity.Job;
 import com.bjtumarket.entity.Resume;
+import com.bjtumarket.entity.User;
 import com.bjtumarket.mapper.DeliveryMapper;
+import com.bjtumarket.mapper.UserMapper;
 import com.bjtumarket.service.DeliveryService;
 import com.bjtumarket.service.JobService;
 import com.bjtumarket.service.ResumeService;
@@ -15,8 +17,10 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DeliveryServiceImpl extends ServiceImpl<DeliveryMapper, Delivery> implements DeliveryService {
@@ -27,6 +31,12 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryMapper, Delivery> i
     @Autowired
     private ResumeService resumeService;
 
+    @Autowired
+    private UserMapper userMapper;
+
+    private static final int DAILY_LIMIT_NORMAL = 10;
+    private static final int DAILY_LIMIT_VIP = 30;
+
     @Override
     @CacheEvict(value = "adminStats", allEntries = true, beforeInvocation = true)
     public boolean apply(Long jobId, Long userId) {
@@ -36,6 +46,18 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryMapper, Delivery> i
         }
         Resume resume = resumeService.getResumeByUserId(userId);
         if (resume == null) {
+            return false;
+        }
+
+        // VIP 投递上限检查
+        long todayCount = this.lambdaQuery()
+                .eq(Delivery::getResumeId, resume.getId())
+                .ge(Delivery::getCreateTime, LocalDate.now().atStartOfDay())
+                .count();
+        User user = userMapper.selectById(userId);
+        int limit = (user != null && user.getMemberLevel() != null && user.getMemberLevel() == 1)
+                ? DAILY_LIMIT_VIP : DAILY_LIMIT_NORMAL;
+        if (todayCount >= limit) {
             return false;
         }
 
@@ -160,6 +182,32 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryMapper, Delivery> i
                 continue;
             }
             records.add(vo);
+        }
+
+        // VIP 简历优先排序
+        if (!records.isEmpty()) {
+            Set<Long> resumeIds = records.stream()
+                    .map(r -> (Long) r.get("resumeId")).collect(Collectors.toSet());
+            List<Resume> resumes = resumeService.listByIds(resumeIds);
+            Map<Long, Long> resumeUserId = new HashMap<>();
+            for (Resume r : resumes) {
+                if (r != null && r.getUserId() != null) resumeUserId.put(r.getId(), r.getUserId());
+            }
+            Set<Long> userIds = new HashSet<>(resumeUserId.values());
+            Map<Long, Integer> vipMap = new HashMap<>();
+            if (!userIds.isEmpty()) {
+                List<User> users = userMapper.selectBatchIds(userIds);
+                for (User u : users) {
+                    vipMap.put(u.getId(), (u.getMemberLevel() != null && u.getMemberLevel() == 1) ? 1 : 0);
+                }
+            }
+            records.sort((a, b) -> {
+                Long uidA = resumeUserId.get((Long) a.get("resumeId"));
+                Long uidB = resumeUserId.get((Long) b.get("resumeId"));
+                int va = uidA != null ? vipMap.getOrDefault(uidA, 0) : 0;
+                int vb = uidB != null ? vipMap.getOrDefault(uidB, 0) : 0;
+                return Integer.compare(vb, va);
+            });
         }
 
         Map<String, Object> result = new HashMap<>();
